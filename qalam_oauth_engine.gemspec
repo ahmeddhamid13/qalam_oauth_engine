@@ -5,10 +5,10 @@ require "canvas_oauth/version"
 
 # Describe your gem and declare its dependencies:
 Gem::Specification.new do |s|
-  s.name        = "canvas_oauth_engine"
+  s.name        = "qalam_oauth_engine"
   s.version     = CanvasOauth::VERSION
-  s.authors     = ["Dave Donahue", "Adam Anderson", "Simon Williams"]
-  s.email       = ["adam.anderson@12spokes.com", "simon@instructure.com"]
+  s.authors     = ["Dave Donahue", "Adam Anderson", "Simon Williams", "Ahmed Abdelhamid"]
+  s.email       = ["adam.anderson@12spokes.com", "simon@instructure.com", "a.hamid@nezam.io"]
   s.homepage    = ""
   s.summary     = <<-SUM
 CanvasOauth is a mountable engine for handling the oauth workflow with

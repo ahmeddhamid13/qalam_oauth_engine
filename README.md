@@ -17,7 +17,7 @@ remove this limitation in the future.
 Add the gem to your `Gemfile` with the following line, and then `bundle install`
 
 ```
-gem 'canvas_oauth_engine', :require => 'canvas_oauth'
+gem 'qalam_oauth_engine', :require => 'canvas_oauth'
 ```
 
 Then, mount the engine to your app by adding this line to your `routes.rb` file
