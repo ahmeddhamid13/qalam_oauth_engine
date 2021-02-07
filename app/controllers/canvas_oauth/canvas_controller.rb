@@ -5,10 +5,7 @@ module CanvasOauth
     def oauth
       if verify_oauth2_state(params[:state]) && params[:code]
         if token = canvas.get_access_token(params[:code])
-          puts "hello from gem #{params[:code]}"
           refresh_token = canvas.refresh_token
-          puts "refresh_token #{refresh_token}"
-
           if CanvasOauth::Authorization.cache_token(token, refresh_token, user_id, tool_consumer_instance_guid)
             redirect_to main_app.root_path
           else

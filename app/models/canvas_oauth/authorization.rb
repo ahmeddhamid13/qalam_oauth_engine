@@ -29,11 +29,13 @@ module CanvasOauth
     end
 
     def self.update_token(refresh_token, token)
-      user_tokens = where(refresh_token: refresh_token).order("created_at DESC")
-      if canvas_auth = user_tokens.first
-        canvas_auth.update_attribute(:token, token)
-        canvas_auth.update_attribute(:last_used_at, Time.now)
-        return canvas_auth.token
+      if token 
+        user_tokens = where(refresh_token: refresh_token).order("created_at DESC")
+        if canvas_auth = user_tokens.first
+          canvas_auth.update_attribute(:token, token)
+          canvas_auth.update_attribute(:last_used_at, Time.now)
+          return canvas_auth.token
+        end
       end
     end
 

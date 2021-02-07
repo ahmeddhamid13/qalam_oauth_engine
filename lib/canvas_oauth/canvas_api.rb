@@ -6,11 +6,11 @@ module CanvasOauth
     attr_accessor :token, :refresh_token, :key, :secret
     attr_reader :canvas_url
 
-    def initialize(canvas_url, token, refresh_token = nil, key, secret)
+    def initialize(canvas_url, token, refresh_token, key, secret)
       unless [key, secret].all?(&:present?)
         raise "Invalid Canvas oAuth configuration"
       end
-
+      
       self.refresh_token = refresh_token
       self.canvas_url = canvas_url
       self.token = token
@@ -19,7 +19,7 @@ module CanvasOauth
     end
 
     def authenticated_request(method, *params)
-      get_access_token_by_refresh_token
+      get_access_token_by_refresh_token unless refresh_token.nil?
 
       params << {} if params.size == 1
 
@@ -232,8 +232,6 @@ module CanvasOauth
     end
 
     def get_access_token(code)
-      puts "hello from gem #{code}"
-
       params = {
         body: {
           client_id: key,
@@ -243,7 +241,6 @@ module CanvasOauth
       }
 
       response = self.class.post '/login/oauth2/token', params
-      puts "res: #{response.inspect}"
       self.refresh_token = response['refresh_token']
       self.token = response['access_token']
     end
@@ -259,7 +256,8 @@ module CanvasOauth
       }
 
       response = self.class.post '/login/oauth2/token', params
-      self.token = CanvasOauth::Authorization.update_token(refresh_token, response['access_token'])
+      self.token = response['access_token']
+      CanvasOauth::Authorization.update_token(refresh_token, token)
     end
 
     def hex_sis_id(name, value)
