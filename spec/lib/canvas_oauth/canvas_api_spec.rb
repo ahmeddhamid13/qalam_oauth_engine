@@ -18,6 +18,26 @@ describe CanvasOauth::CanvasApi do
     it { is_expected.to eq "http://test.canvas/login/oauth2/auth?client_id=key&response_type=code&state=zzxxyy&redirect_uri=http://localhost:3001/canvas/oauth" }
   end
 
+  describe "hash_csv" do
+    it "accepts a csv string and hashes it" do
+      csv = "canvas_course_id,course_id,short_name\n1,,Test Course"
+      expect(canvas.hash_csv(csv)).to eq([{
+        "canvas_course_id" => "1",
+        "course_id" => "",
+        "short_name" => "Test Course"
+      }])
+    end
+
+    it "accepts a parsed csv array and hashes it" do
+      csv = [["canvas_course_id", "course_id", "short_name"], ["1", nil, "Test Course"]]
+      expect(canvas.hash_csv(csv)).to eq([{
+        "canvas_course_id" => "1",
+        "course_id" => "",
+        "short_name" => "Test Course"
+      }])
+    end
+  end
+
   describe "get_access_token" do
     it "POSTs to /login/oauth2/token" do
       expect(CanvasOauth::CanvasApi).to receive(:post).with('/login/oauth2/token', anything()).and_return({})
@@ -154,6 +174,20 @@ describe CanvasOauth::CanvasApi do
       end
     end
 
+    describe "update_assignment" do
+      it "puts to /api/v1/courses/:course_id/assignments/:id" do
+        expect(CanvasOauth::CanvasApi).to receive(:put).with('/api/v1/courses/123/assignments/345', anything())
+        canvas.update_assignment('123', '345', omit_from_final_grade: true)
+      end
+
+      it "sets the body of the request to the assignment params" do
+        expect(canvas).to receive(:authenticated_put).
+          with(anything(), { body: { assignment: { omit_from_final_grade: true }}})
+
+        canvas.update_assignment('123', '345', omit_from_final_grade: true)
+      end
+    end
+
     describe "grade_assignment" do
       it "puts to /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:id" do
         expect(CanvasOauth::CanvasApi).to receive(:put).with('/api/v1/courses/1/assignments/2/submissions/3', anything())
@@ -163,6 +197,87 @@ describe CanvasOauth::CanvasApi do
       it "sets the body of the request to the grade params" do
         expect(canvas).to receive(:authenticated_put).with(anything(), { body: { percentage: "80%" }})
         canvas.grade_assignment('1', '2', '3', percentage: "80%")
+      end
+    end
+
+    describe 'get_submission' do
+      it 'queries /api/v1/courses/:course_id/assignments/:assignment_id/submissions/:user_id' do
+        expect(canvas).to receive(:authenticated_get).with('/api/v1/courses/1/assignments/2/submissions/3')
+        canvas.get_submission(1, 2, 3)
+      end
+    end
+
+    describe "get_report" do
+      context "from account level" do
+        let(:created) {
+          {
+            'id' => '9',
+            'status' => 'created'
+          }
+        }
+        let(:complete) {
+          {
+            'id' => '10',
+            'status' => 'complete',
+            'file_url' => '/files/8/download/'
+          }
+        }
+        let(:running) {
+          {
+            'id' => '11',
+            'status' => 'running'
+          }
+        }
+        let(:aborted) {
+          {
+            'id' => '12',
+            'status' => 'aborted'
+          }
+        }
+        let(:file) { {'url': 'http://canvas.com'} }
+        let(:response) { double("response", :parsed_response => "1, 2, 3") }
+        let(:params) {
+          {
+            account_id: '1',
+            email: "foo@bar.com",
+            filters: {
+              start_date: '07/30/19',
+              end_date: '07/31/19'
+            }
+          }
+        }
+
+        before(:each) do
+          allow(canvas).to receive(:authenticated_post).and_return(created)
+          allow(canvas).to receive(:get_file).and_return(file)
+          allow(CanvasOauth::CanvasApi).to receive(:get).and_return(response)
+          allow(self).to receive(:sleep)
+        end
+
+        it "posts to /api/v1/accounts/:account_id/reports/:provisioning_csv" do
+          allow(canvas).to receive(:authenticated_get).and_return(complete)
+          expect(canvas).to receive(:authenticated_post).with("/api/v1/accounts/1/reports/provisioning_csv", { body: params })
+          canvas.get_report(1, :provisioning_csv, params)
+        end
+
+        it "queries /api/v1/accounts/:account_id/reports/:provisioning_csv/:report_id until report is 'complete'" do
+          allow(canvas).to receive(:authenticated_get?) { true }
+          expect(canvas).to receive(:authenticated_get).exactly(3).times.and_return(created, running, complete)
+          canvas.get_report(1, :provisioning_csv, params)
+        end
+
+        it "doesn't continue request reports upon 'aborted' status" do
+          allow(canvas).to receive(:authenticated_get?) { true }
+          expect(canvas).to receive(:authenticated_get).exactly(3).times.and_return(created, running, aborted)
+          canvas.get_report(1, :provisioning_csv, params)
+        end
+
+        it "uses the default UTF 8 parser it its get call" do
+          allow(canvas).to receive(:authenticated_get).and_return(complete)
+          expect(canvas).to receive(:authenticated_post).with("/api/v1/accounts/1/reports/provisioning_csv", { body: params })
+          expect(CanvasOauth::CanvasApi).to receive(:get).with(file['url'], hash_including(parser: CanvasOauth::DefaultUTF8Parser)).and_return(response)
+          canvas.get_report(1, :provisioning_csv, params)
+        end
       end
     end
   end
@@ -179,6 +294,10 @@ describe CanvasOauth::CanvasApi do
     end
 
     describe "paginated_get" do
+
+      let(:first_response_link) { {'link' => "<https://foobar.com/some/address?taco=tuesday&per_page=50&page=2>; rel=\"next\", <https://foobar.com/some/address?taco=tuesday&per_page=50&page=2>; rel=\"last\""} }
+      let(:query) { { query: { taco: 'tuesday' } } }
+
       it "adds per_page parameters to the request query" do
         expect(canvas).to receive(:authenticated_get).with("/some/address", query: { per_page: 50 })
         canvas.paginated_get "/some/address"
@@ -188,11 +307,28 @@ describe CanvasOauth::CanvasApi do
         allow(canvas).to receive(:valid_page?) { true }
         first_response = []
         second_response = []
-        allow(first_response).to receive(:headers).and_return({'link' => "<https://foobar.com/some/address?page=2>; rel=\"next\", <https://foobar.com/some/address?page=2>; rel=\"last\""})
+        allow(first_response).to receive(:headers).and_return(first_response_link)
         allow(second_response).to receive(:headers).and_return({})
         expect(canvas).to receive(:authenticated_get).
           exactly(2).times.and_return(first_response,second_response)
-        canvas.paginated_get "/some/address"
+        canvas.paginated_get "/some/address", query
+      end
+
+      it "requests the next link without repeating query elements" do
+        query_expected = query.dup
+        query_expected[:query][:per_page] = 50
+
+        allow(canvas).to receive(:valid_page?) { true }
+
+        first_response = []
+        second_response = []
+        allow(first_response).to receive(:headers).and_return(first_response_link)
+        allow(second_response).to receive(:headers).and_return({})
+
+        expect(canvas).to receive(:authenticated_get).with("/some/address", query_expected).and_return(first_response)
+        expect(canvas).to receive(:authenticated_get).with('https://foobar.com/some/address?taco=tuesday&per_page=50&page=2', {query: nil}).and_return(second_response)
+
+        canvas.paginated_get "/some/address", query
       end
 
       it "sends only one request when no next link is in the response Link header" do

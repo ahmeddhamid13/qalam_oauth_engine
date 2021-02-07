@@ -1,5 +1,5 @@
 module CanvasOauth
-  class ApplicationController < ActionController::Base
+  class OauthApplicationController < ActionController::Base
     include CanvasOauth::CanvasApplication
   end
 end

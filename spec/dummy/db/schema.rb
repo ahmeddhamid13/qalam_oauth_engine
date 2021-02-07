@@ -9,17 +9,19 @@
 # from scratch. The latter is a flawed and unsustainable approach (the more migrations
 # you'll amass, the slower it'll run and the greater likelihood for issues).
 #
-# It's strongly recommended to check this file into your version control system.
+# It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(:version => 20130326194409) do
+ActiveRecord::Schema.define(version: 20121121005358) do
 
-  create_table "canvas_oauth_authorizations", :force => true do |t|
-    t.integer  "canvas_user_id",              :limit => 8
-    t.string   "tool_consumer_instance_guid",              :null => false
+  create_table "canvas_oauth_authorizations", force: true do |t|
+    t.integer  "canvas_user_id",              limit: 8
+    t.string   "tool_consumer_instance_guid",           null: false
     t.string   "token"
     t.datetime "last_used_at"
-    t.datetime "created_at",                               :null => false
-    t.datetime "updated_at",                               :null => false
+    t.datetime "created_at",                            null: false
+    t.datetime "updated_at",                            null: false
   end
+
+  add_index "canvas_oauth_authorizations", ["canvas_user_id", "tool_consumer_instance_guid"], name: "index_canvas_oauth_auths_on_user_id_and_tciguid"
 
 end

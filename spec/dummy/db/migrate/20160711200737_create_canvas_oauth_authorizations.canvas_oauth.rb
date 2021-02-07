@@ -1,5 +1,5 @@
 # This migration comes from canvas_oauth (originally 20121121005358)
-class CreateCanvasOauthAuthorizations < ActiveRecord::Migration
+class CreateCanvasOauthAuthorizations < ActiveRecord::Migration[4.2]
   def change
     create_table "canvas_oauth_authorizations", :force => true do |t|
       t.integer  "canvas_user_id", :limit => 8
@@ -9,5 +9,8 @@ class CreateCanvasOauthAuthorizations < ActiveRecord::Migration
       t.datetime "created_at",                  :null => false
       t.datetime "updated_at",                  :null => false
     end
+
+    add_index :canvas_oauth_authorizations, [:canvas_user_id, :tool_consumer_instance_guid],
+      name: 'index_canvas_oauth_auths_on_user_id_and_tciguid'
   end
 end

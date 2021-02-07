@@ -232,6 +232,8 @@ module CanvasOauth
     end
 
     def get_access_token(code)
+      puts "hello from gem #{code}"
+
       params = {
         body: {
           client_id: key,
