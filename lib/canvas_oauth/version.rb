@@ -1,3 +1,3 @@
 module CanvasOauth
-  VERSION = "2.1.4"
+  VERSION = "2.1.52"
 end

@@ -19,8 +19,6 @@ module CanvasOauth
     end
 
     def authenticated_request(method, *params)
-      get_access_token_by_refresh_token unless refresh_token.nil?
-
       params << {} if params.size == 1
 
       params.last[:headers] ||= {}
@@ -39,10 +37,15 @@ module CanvasOauth
       }
 
       if response && response.unauthorized?
-        if response.headers['WWW-Authenticate'].present?
-          raise CanvasApi::Authenticate
+        if refresh_token
+          get_access_token_by_refresh_token
+          authenticated_request(method, *params)
         else
-          raise CanvasApi::Unauthorized
+          if response.headers['WWW-Authenticate'].present?
+            raise CanvasApi::Authenticate
+          else
+            raise CanvasApi::Unauthorized
+          end
         end
       else
         return response
